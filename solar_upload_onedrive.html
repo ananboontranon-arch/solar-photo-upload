@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>บันทึกรูปส่งมอบงาน | Solar Installation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-msal-browser/3.11.1/msal-browser.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --sun: #F5A623;
+    --sky: #1A3A5C;
+    --sky-light: #2B5A8A;
+    --white: #FFFFFF;
+    --gray-bg: #F4F6F9;
+    --gray-border: #DDE3EC;
+    --gray-text: #6B7A8D;
+    --success: #27AE60;
+    --danger: #E74C3C;
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(26,58,92,0.10);
+  }
+  body { font-family: 'Sarabun','Segoe UI',sans-serif; background: var(--gray-bg); color: var(--sky); min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, var(--sky) 0%, var(--sky-light) 100%);
+    color: var(--white); padding: 20px 16px 16px;
+    text-align: center; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(26,58,92,0.25);
+  }
+  .header-logo { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--sun); font-weight: 700; margin-bottom: 4px; }
+  .header h1 { font-size: 16px; font-weight: 700; }
+  .header-sub { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 4px; }
+
+  /* LOGIN SCREEN */
+  .login-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: calc(100vh - 84px); padding: 32px 20px; text-align: center;
+  }
+  .login-icon { font-size: 64px; margin-bottom: 16px; }
+  .login-title { font-size: 20px; font-weight: 700; color: var(--sky); margin-bottom: 8px; }
+  .login-sub { font-size: 14px; color: var(--gray-text); margin-bottom: 28px; line-height: 1.5; }
+  .login-btn {
+    display: flex; align-items: center; gap: 12px;
+    background: #0078D4; color: white; border: none;
+    border-radius: 10px; padding: 14px 28px;
+    font-size: 15px; font-family: inherit; font-weight: 700;
+    cursor: pointer; box-shadow: 0 4px 16px rgba(0,120,212,0.3);
+    transition: opacity 0.2s;
+  }
+  .login-btn:active { opacity: 0.85; }
+  .ms-logo { width: 20px; height: 20px; }
+
+  /* PROGRESS */
+  .progress-wrap {
+    background: var(--white); padding: 12px 16px;
+    border-bottom: 1px solid var(--gray-border);
+    position: sticky; top: 84px; z-index: 99;
+  }
+  .progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--gray-text); margin-bottom: 6px; }
+  .progress-bar-bg { background: var(--gray-border); border-radius: 99px; height: 6px; }
+  .progress-bar-fill { background: linear-gradient(90deg, var(--sky), var(--sun)); height: 6px; border-radius: 99px; transition: width 0.4s; width: 0%; }
+
+  /* USER BAR */
+  .user-bar {
+    background: #E8F4FF; border-bottom: 1px solid #BDD9F5;
+    padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--sky);
+  }
+  .user-bar .name { font-weight: 700; flex: 1; }
+  .logout-btn {
+    background: none; border: 1px solid var(--gray-border);
+    border-radius: 6px; padding: 4px 10px; font-size: 12px;
+    color: var(--gray-text); cursor: pointer; font-family: inherit;
+  }
+
+  /* MAIN */
+  .main { padding: 16px; max-width: 480px; margin: 0 auto; }
+
+  /* INFO CARD */
+  .info-card { background: var(--white); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+  .info-card label { font-size: 11px; color: var(--gray-text); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 4px; font-weight: 600; }
+  .info-card input[type="text"] {
+    width: 100%; border: 1.5px solid var(--gray-border); border-radius: 8px;
+    padding: 10px 12px; font-size: 15px; color: var(--sky); font-family: inherit;
+    outline: none; transition: border-color 0.2s; margin-bottom: 12px;
+  }
+  .info-card input[type="text"]:last-child { margin-bottom: 0; }
+  .info-card input[type="text"]:focus { border-color: var(--sky-light); }
+
+  /* STEP CARD */
+  .step-card {
+    background: var(--white); border-radius: var(--radius); margin-bottom: 12px;
+    box-shadow: var(--shadow); overflow: hidden; border: 2px solid transparent; transition: border-color 0.3s;
+  }
+  .step-card.has-photos { border-color: var(--success); }
+  .step-header { display: flex; align-items: center; padding: 14px 16px; cursor: pointer; gap: 12px; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .step-num {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--gray-bg);
+    color: var(--gray-text); font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.3s;
+  }
+  .step-card.has-photos .step-num { background: var(--success); color: var(--white); }
+  .step-title { flex: 1; font-size: 14px; font-weight: 600; line-height: 1.3; }
+  .step-count { font-size: 11px; color: var(--gray-text); background: var(--gray-bg); padding: 3px 8px; border-radius: 99px; flex-shrink: 0; }
+  .step-card.has-photos .step-count { background: #E8F8EE; color: var(--success); }
+  .step-arrow { color: var(--gray-text); font-size: 12px; transition: transform 0.3s; flex-shrink: 0; }
+  .step-card.open .step-arrow { transform: rotate(180deg); }
+  .step-body { display: none; padding: 0 16px 16px; border-top: 1px solid var(--gray-border); }
+  .step-card.open .step-body { display: block; }
+
+  /* PHOTOS */
+  .photo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 12px; }
+  .photo-thumb { aspect-ratio: 1; border-radius: 8px; object-fit: cover; width: 100%; }
+  .photo-thumb-wrap { position: relative; }
+  .photo-remove {
+    position: absolute; top: 4px; right: 4px; background: rgba(231,76,60,0.85);
+    color: white; border: none; border-radius: 50%; width: 22px; height: 22px;
+    font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .upload-status {
+    position: absolute; bottom: 4px; left: 4px; right: 4px;
+    background: rgba(0,0,0,0.6); color: white; font-size: 10px;
+    border-radius: 4px; padding: 2px 4px; text-align: center;
+  }
+  .add-photo-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 12px; margin-top: 12px;
+    border: 2px dashed var(--gray-border); border-radius: 10px;
+    background: none; color: var(--sky-light); font-size: 14px;
+    font-family: inherit; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .add-photo-btn:active { background: var(--gray-bg); }
+  input[type="file"] { display: none; }
+  .note-label { font-size: 11px; color: var(--gray-text); margin-top: 12px; margin-bottom: 4px; display: block; font-weight: 600; }
+  .note-input { width: 100%; border: 1.5px solid var(--gray-border); border-radius: 8px; padding: 10px 12px; font-size: 14px; font-family: inherit; color: var(--sky); resize: none; outline: none; min-height: 64px; transition: border-color 0.2s; }
+  .note-input:focus { border-color: var(--sky-light); }
+
+  /* SUBMIT */
+  .submit-wrap { padding: 16px; max-width: 480px; margin: 0 auto; padding-bottom: 32px; }
+  .submit-btn {
+    width: 100%; padding: 16px;
+    background: linear-gradient(135deg, var(--sky) 0%, var(--sky-light) 100%);
+    color: var(--white); border: none; border-radius: var(--radius);
+    font-size: 16px; font-family: inherit; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(26,58,92,0.25); transition: opacity 0.2s;
+  }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .submit-hint { text-align: center; font-size: 12px; color: var(--gray-text); margin-top: 8px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--sky); color: white; padding: 12px 24px; border-radius: 99px;
+    font-size: 14px; font-weight: 600; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1); z-index: 999; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--danger); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: white; border-radius: 16px; padding: 28px 24px 20px; max-width: 320px; width: 90%; text-align: center; }
+  .modal-icon { font-size: 48px; margin-bottom: 12px; }
+  .modal-title { font-size: 18px; font-weight: 700; color: var(--sky); margin-bottom: 8px; }
+  .modal-sub { font-size: 14px; color: var(--gray-text); line-height: 1.6; }
+  .modal-btn { margin-top: 20px; width: 100%; padding: 13px; background: var(--success); color: white; border: none; border-radius: 10px; font-size: 15px; font-family: inherit; font-weight: 700; cursor: pointer; }
+
+  /* LOADING OVERLAY */
+  .loading-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(26,58,92,0.7);
+    z-index: 600; flex-direction: column; align-items: center; justify-content: center; color: white;
+  }
+  .loading-overlay.show { display: flex; }
+  .spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 15px; font-weight: 600; }
+  .loading-sub { font-size: 12px; opacity: 0.7; margin-top: 4px; }
+
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">☀ EcoVolt Solution</div>
+  <h1>บันทึกรูปส่งมอบงาน</h1>
+  <div class="header-sub">ระบบโซล่าเซลล์ ON GRID</div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-icon">☀️</div>
+  <div class="login-title">ระบบส่งรูปงานติดตั้ง</div>
+  <div class="login-sub">ล็อกอินด้วย Microsoft Account<br>เพื่ออัพโหลดรูปเข้า OneDrive</div>
+  <button class="login-btn" onclick="signIn()">
+    <svg class="ms-logo" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+      <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+      <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+      <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+    </svg>
+    เข้าสู่ระบบด้วย Microsoft
+  </button>
+</div>
+
+<!-- MAIN APP -->
+<div id="appScreen" class="hidden">
+  <div class="user-bar">
+    <span>👤</span>
+    <span class="name" id="userName">กำลังโหลด...</span>
+    <button class="logout-btn" onclick="signOut()">ออกจากระบบ</button>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-label">
+      <span>ความครบถ้วนของรูป</span>
+      <span id="progressText">0 / 9 หัวข้อ</span>
+    </div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
+  </div>
+
+  <div class="main">
+    <div class="info-card">
+      <label>ชื่อช่าง</label>
+      <input type="text" id="techName" placeholder="กรอกชื่อช่าง" />
+      <label>ชื่องาน / โครงการ</label>
+      <input type="text" id="jobName" placeholder="เช่น JRT Service Body" />
+    </div>
+    <div id="stepList"></div>
+  </div>
+
+  <div class="submit-wrap">
+    <button class="submit-btn" id="submitBtn" onclick="handleSubmit()">📤 ส่งรายงานและอัพโหลดรูป</button>
+    <div class="submit-hint" id="submitHint">รูปจะถูกอัพโหลดเข้า OneDrive ของคุณ</div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">กำลังอัพโหลด...</div>
+  <div class="loading-sub" id="loadingSub"></div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal-box">
+    <div class="modal-icon">✅</div>
+    <div class="modal-title">ส่งรายงานสำเร็จ!</div>
+    <div class="modal-sub" id="modalSub"></div>
+    <button class="modal-btn" onclick="document.getElementById('successModal').classList.remove('show')">ตกลง</button>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const CLIENT_ID = "e8129237-996d-4154-97ef-97b06582e95a";
+const TENANT_ID = "345ad4db-89cd-4839-a87e-e076d6006a83";
+const FOLDER_NAME = "Solar_Job_Photos";
+
+const msalConfig = {
+  auth: {
+    clientId: CLIENT_ID,
+    authority: `https://login.microsoftonline.com/common`,
+    redirectUri: window.location.href.split('?')[0],
+  },
+  cache: { cacheLocation: "sessionStorage" }
+};
+
+const msalInstance = new msal.PublicClientApplication(msalConfig);
+const loginRequest = { scopes: ["Files.ReadWrite", "User.Read"] };
+
+let accessToken = null;
+let currentUser = null;
+
+// ===== STEPS =====
+const STEPS = [
+  { id: 1, title: "พื้นที่หลังคาก่อนดำเนินการ", hint: "ถ่ายรูปพื้นที่หลังคาก่อนเริ่มงาน" },
+  { id: 2, title: "ช่างหน้างานเตรียมความพร้อม", hint: "ถ่ายรูปทีมช่างและอุปกรณ์" },
+  { id: 3, title: "งานติดตั้ง PV Mounting ทอร์คสาย", hint: "ถ่ายรูปการติดตั้งโครงยึดแผง" },
+  { id: 4, title: "งานติดตั้งแผง PV บนหลังคา", hint: "ถ่ายรูปแผงโซล่าหลังติดตั้ง" },
+  { id: 5, title: "งานต่อสาย GND หลักดิน", hint: "ถ่ายรูปการต่อสายดิน" },
+  { id: 6, title: "งานเดินท่อร้อยสาย (IMC/Wireway)", hint: "ถ่ายรูปท่อร้อยสายและ wireway" },
+  { id: 7, title: "งานติดตั้ง Inverter Station / ตู้ AC/DC", hint: "ถ่ายรูป inverter และตู้ควบคุม" },
+  { id: 8, title: "งาน Wiring ภายในตู้ AC/DC และ Inverter", hint: "ถ่ายรูปการเดินสายภายในตู้" },
+  { id: 9, title: "การวัดค่าต่างๆ ภายในตู้ DC/AC", hint: "ถ่ายรูปผลการวัดค่าไฟฟ้า" },
+];
+
+const photos = {};
+STEPS.forEach(s => photos[s.id] = []);
+
+// ===== AUTH =====
+async function initAuth() {
+  await msalInstance.initialize();
+  try {
+    const response = await msalInstance.handleRedirectPromise();
+    if (response) {
+      accessToken = response.accessToken;
+      currentUser = response.account;
+      msalInstance.setActiveAccount(currentUser);
+      showApp();
+      return;
+    }
+  } catch(e) {}
+
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) {
+    msalInstance.setActiveAccount(accounts[0]);
+    try {
+      const result = await msalInstance.acquireTokenSilent({ ...loginRequest, account: accounts[0] });
+      accessToken = result.accessToken;
+      currentUser = accounts[0];
+      showApp();
+    } catch(e) {
+      showLogin();
+    }
+  } else {
+    showLogin();
+  }
+}
+
+async function signIn() {
+  try {
+    await msalInstance.loginRedirect(loginRequest);
+  } catch(e) {
+    showToast('เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่', 'error');
+  }
+}
+
+function signOut() {
+  msalInstance.logoutRedirect();
+}
+
+async function getToken() {
+  const account = msalInstance.getActiveAccount();
+  try {
+    const result = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
+    return result.accessToken;
+  } catch(e) {
+    const result = await msalInstance.acquireTokenPopup(loginRequest);
+    return result.accessToken;
+  }
+}
+
+function showLogin() {
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('appScreen').classList.add('hidden');
+}
+
+function showApp() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('appScreen').classList.remove('hidden');
+  const name = currentUser?.name || currentUser?.username || 'ช่าง';
+  document.getElementById('userName').textContent = name;
+  document.getElementById('techName').value = name;
+  renderSteps();
+}
+
+// ===== ONEDRIVE UPLOAD =====
+async function ensureFolder(token, jobFolder) {
+  // Create main folder
+  await fetch(`https://graph.microsoft.com/v1.0/me/drive/root/children`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: FOLDER_NAME, folder: {}, "@microsoft.graph.conflictBehavior": "rename" })
+  });
+  // Create job subfolder
+  const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${FOLDER_NAME}:/children`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: jobFolder, folder: {}, "@microsoft.graph.conflictBehavior": "rename" })
+  });
+  const data = await res.json();
+  return data.id;
+}
+
+async function uploadPhoto(token, folderId, filename, dataUrl) {
+  const base64 = dataUrl.split(',')[1];
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const blob = new Blob([bytes], { type: 'image/jpeg' });
+
+  const res = await fetch(`https://graph.microsoft.com/v1.0/me/drive/items/${folderId}:/${filename}:/content`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'image/jpeg' },
+    body: blob
+  });
+  return res.ok;
+}
+
+// ===== STEPS RENDER =====
+function renderSteps() {
+  const container = document.getElementById('stepList');
+  container.innerHTML = '';
+  STEPS.forEach(step => {
+    const card = document.createElement('div');
+    card.className = 'step-card';
+    card.id = `card-${step.id}`;
+    card.innerHTML = `
+      <div class="step-header" onclick="toggleStep(${step.id})">
+        <div class="step-num" id="num-${step.id}">${step.id}</div>
+        <div class="step-title">${step.title}</div>
+        <div class="step-count" id="count-${step.id}">0 รูป</div>
+        <div class="step-arrow">▼</div>
+      </div>
+      <div class="step-body" id="body-${step.id}">
+        <div class="photo-grid" id="grid-${step.id}"></div>
+        <button class="add-photo-btn" onclick="triggerUpload(${step.id})">
+          <span>📷</span> ถ่ายรูป / เลือกรูป
+        </button>
+        <input type="file" accept="image/*" multiple capture="environment"
+          id="file-${step.id}" onchange="handleFiles(${step.id}, this)" />
+        <span class="note-label">หมายเหตุ (ถ้ามี)</span>
+        <textarea class="note-input" id="note-${step.id}" placeholder="${step.hint}" rows="2"></textarea>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function toggleStep(id) {
+  document.getElementById(`card-${id}`).classList.toggle('open');
+}
+
+function triggerUpload(id) {
+  document.getElementById(`file-${id}`).click();
+}
+
+function handleFiles(stepId, input) {
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      photos[stepId].push({ dataUrl: e.target.result, name: file.name, uploaded: false });
+      renderGrid(stepId);
+      updateProgress();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderGrid(stepId) {
+  const grid = document.getElementById(`grid-${stepId}`);
+  const card = document.getElementById(`card-${stepId}`);
+  const count = document.getElementById(`count-${stepId}`);
+  const num = document.getElementById(`num-${stepId}`);
+  grid.innerHTML = '';
+  photos[stepId].forEach((photo, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'photo-thumb-wrap';
+    wrap.innerHTML = `
+      <img class="photo-thumb" src="${photo.dataUrl}" />
+      ${!photo.uploaded ? `<button class="photo-remove" onclick="removePhoto(${stepId},${idx})">✕</button>` : ''}
+      ${photo.uploaded ? `<div class="upload-status">✓ อัพโหลดแล้ว</div>` : ''}
+    `;
+    grid.appendChild(wrap);
+  });
+  const n = photos[stepId].length;
+  count.textContent = `${n} รูป`;
+  if (n > 0) { card.classList.add('has-photos'); num.textContent = '✓'; }
+  else { card.classList.remove('has-photos'); num.textContent = stepId; }
+}
+
+function removePhoto(stepId, idx) {
+  photos[stepId].splice(idx, 1);
+  renderGrid(stepId);
+  updateProgress();
+}
+
+function updateProgress() {
+  const done = STEPS.filter(s => photos[s.id].length > 0).length;
+  const pct = Math.round((done / STEPS.length) * 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${done} / ${STEPS.length} หัวข้อ`;
+}
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast' + (type ? ' ' + type : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function showLoading(text, sub = '') {
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('loadingSub').textContent = sub;
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('show');
+}
+
+// ===== SUBMIT =====
+async function handleSubmit() {
+  const tech = document.getElementById('techName').value.trim();
+  const job = document.getElementById('jobName').value.trim();
+  if (!tech) { showToast('กรุณากรอกชื่อช่าง', 'error'); return; }
+  if (!job) { showToast('กรุณากรอกชื่องาน', 'error'); return; }
+  const totalPhotos = STEPS.reduce((s, st) => s + photos[st.id].length, 0);
+  if (totalPhotos === 0) { showToast('กรุณาอัพโหลดรูปอย่างน้อย 1 รูป', 'error'); return; }
+
+  document.getElementById('submitBtn').disabled = true;
+
+  try {
+    showLoading('กำลังเชื่อมต่อ OneDrive...', '');
+    const token = await getToken();
+
+    const date = new Date().toLocaleDateString('th-TH').replace(/\//g, '-');
+    const jobFolder = `${job}_${date}`.replace(/[^ก-๙a-zA-Z0-9_-]/g, '_');
+
+    showLoading('กำลังสร้างโฟลเดอร์...', `Solar_Job_Photos / ${jobFolder}`);
+    const folderId = await ensureFolder(token, jobFolder);
+
+    let uploaded = 0;
+    for (const step of STEPS) {
+      for (let i = 0; i < photos[step.id].length; i++) {
+        const photo = photos[step.id][i];
+        if (photo.uploaded) continue;
+        const filename = `${step.id}_${step.title.replace(/[^ก-๙a-zA-Z0-9]/g, '_')}_${i+1}.jpg`;
+        showLoading(`กำลังอัพโหลดรูป...`, `${uploaded+1}/${totalPhotos}: ${step.title}`);
+        const ok = await uploadPhoto(token, folderId, filename, photo.dataUrl);
+        if (ok) { photos[step.id][i].uploaded = true; uploaded++; }
+      }
+      renderGrid(step.id);
+    }
+
+    hideLoading();
+    document.getElementById('modalSub').innerHTML =
+      `<strong>${tech}</strong> · ${job}<br>อัพโหลดสำเร็จ <strong>${uploaded} รูป</strong><br><br>
+      <small>📁 OneDrive → ${FOLDER_NAME} → ${jobFolder}</small>`;
+    document.getElementById('successModal').classList.add('show');
+
+  } catch(e) {
+    hideLoading();
+    showToast('เกิดข้อผิดพลาด: ' + e.message, 'error');
+    console.error(e);
+  }
+
+  document.getElementById('submitBtn').disabled = false;
+}
+
+// ===== INIT =====
+initAuth();
+</script>
+</body>
+</html>
